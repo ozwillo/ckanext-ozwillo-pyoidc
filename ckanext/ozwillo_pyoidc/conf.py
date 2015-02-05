@@ -39,13 +39,13 @@ CLIENTS = {
     "ozwillo": {
         "srv_discovery_url": "https://accounts.ozwillo-preprod.eu/",
         "client_registration": {
-            "client_id": "64a1002e-3149-4e1d-a374-6ff08b79dae6",
-            "client_secret": "RCjT6YTN7CY0l8UAbGUOtSOrAKZKW4XXzK1ZWi7u0nE",
-            "redirect_uris": ["https://ckan.dev.entrouvert.org/openid/callback"],
+            "client_id": None,
+            "client_secret": None,
+            "redirect_uris": [],
         },
         "behaviour": {
             "response_type": "code",
-            "scope": ["openid", "profile"]
+            "scope": ["openid", "profile", "email"]
         },
         "allow": {
             "issuer_mismatch": True
