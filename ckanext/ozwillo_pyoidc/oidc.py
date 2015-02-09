@@ -95,7 +95,8 @@ class Client(oic.Client):
             if isinstance(atresp, ErrorResponse):
                 raise OIDCError("Invalid response %s." % atresp["error"])
 
-        inforesp = self.do_user_info_request(state=authresp["state"])
+        inforesp = self.do_user_info_request(state=authresp["state"],
+                                             behavior='use_authorization_header')
 
         if isinstance(inforesp, ErrorResponse):
             raise OIDCError("Invalid response %s." % inforesp["error"])
