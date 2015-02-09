@@ -30,6 +30,11 @@ class OzwilloPyoidcPlugin(plugins.SingletonPlugin):
         map.connect('/organization/{id:.*}/callback',
                     controller=plugin_controller,
                     action='callback')
+        map.connect('/user/slo',
+                    controller=plugin_controller,
+                    action='slo')
+        map.redirect('/organization/{id:.*}/logout', '/user/_logout')
+
         return map
 
     def after_map(self, map):
@@ -65,10 +70,6 @@ class OzwilloPyoidcPlugin(plugins.SingletonPlugin):
             toolkit.redirect_to('/')
 
     def logout(self):
-        # revoke all auth tokens
-        # redirect to logout in ozwillo
-        # revoke_endpoint = 'https://portal.ozwillo-preprod.eu/a/revoke'
-        # toolkit.redirect('/user/_logout')
         pass
 
     def update_config(self, config_):
@@ -111,3 +112,27 @@ class OpenidController(base.BaseController):
                                       id=session['organization_id'],
                                       qualified=True)
             toolkit.redirect_to(org_url)
+
+    def slo(self):
+        """
+        Revokes the delivered access token. Logs out the user
+        """
+        global CLIENT
+        logout_url = str(CLIENT.end_session_endpoint)
+        org_url = toolkit.url_for(host=request.host,
+                                  controller='organization',
+                                  action='read',
+                                  id=session['organization_id'],
+                                  qualified=True)
+        redirect_uri = org_url + '/logout'
+
+        # revoke the access token
+        headers = {'Content-Type': 'application/x-www-form-urlencoded'}
+        data = 'token=%s&token_type_hint=access_token' % CLIENT.access_token
+        CLIENT.http_request(CLIENT.revocation_endpoint, 'POST',
+                            data=data, headers=headers)
+
+        # redirect to IDP logout
+        logout_url += '?id_token_hint=%s&' % CLIENT.id_token
+        logout_url += 'post_logout_redirect_uri=%s' % redirect_uri
+        toolkit.redirect_to(logout_url)
