@@ -1,4 +1,3 @@
-from oic.utils.http_util import Redirect
 from oic.exception import MissingAttribute
 from oic import oic
 from oic.oauth2 import rndstr, ErrorResponse
@@ -7,12 +6,11 @@ from oic.oic import RegistrationResponse
 from oic.oic import AuthorizationRequest
 from oic.utils.authn.client import CLIENT_AUTHN_METHOD
 
-__author__ = 'roland'
-
 import logging
 
 logger = logging.getLogger(__name__)
 
+import conf
 
 class OIDCError(Exception):
     pass
@@ -107,129 +105,70 @@ class Client(oic.Client):
 
         return userinfo
 
-
-class OIDCClients(object):
-    def __init__(self, config):
-        """
-
-        :param config: Imported configuration module
-        :return:
-        """
-        self.client = {}
-        self.client_cls = Client
-        self.config = config
-
-        for key, val in config.CLIENTS.items():
-            if key == "":
-                continue
-            else:
-                self.client[key] = self.create_client(**val)
-
-    def create_client(self, userid="", **kwargs):
-        """
-        Do an instantiation of a client instance
-
-        :param userid: An identifier of the user
-        :param: Keyword arguments
-            Keys are ["srv_discovery_url", "client_info", "client_registration",
-            "provider_info"]
-        :return: client instance
-        """
-
-        _key_set = set(kwargs.keys())
-        args = {}
-        for param in ["verify_ssl"]:
-            try:
-                args[param] = kwargs[param]
-            except KeyError:
-                pass
-            else:
-                _key_set.discard(param)
-
-        client = self.client_cls(client_authn_method=CLIENT_AUTHN_METHOD,
-                                 behaviour=kwargs["behaviour"], verify_ssl=self.config.VERIFY_SSL, **args)
-
-        # The behaviour parameter is not significant for the election process
-        _key_set.discard("behaviour")
-        for param in ["allow"]:
-            try:
-                setattr(client, param, kwargs[param])
-            except KeyError:
-                pass
-            else:
-                _key_set.discard(param)
-
-        if _key_set == set(["client_info"]):  # Everything dynamic
-            # There has to be a userid
-            if not userid:
-                raise MissingAttribute("Missing userid specification")
-
-            # Find the service that provides information about the OP
-            issuer = client.wf.discovery_query(userid)
-            # Gather OP information
-            _ = client.provider_config(issuer)
-            # register the client
-            _ = client.register(client.provider_info["registration_endpoint"],
-                                **kwargs["client_info"])
-        elif _key_set == set(["client_info", "srv_discovery_url"]):
-            # Ship the webfinger part
-            # Gather OP information
-            _ = client.provider_config(kwargs["srv_discovery_url"])
-            # register the client
-            _ = client.register(client.provider_info["registration_endpoint"],
-                                **kwargs["client_info"])
-        elif _key_set == set(["provider_info", "client_info"]):
-            client.handle_provider_config(
-                ProviderConfigurationResponse(**kwargs["provider_info"]),
-                kwargs["provider_info"]["issuer"])
-            _ = client.register(client.provider_info["registration_endpoint"],
-                                **kwargs["client_info"])
-        elif _key_set == set(["provider_info", "client_registration"]):
-            client.handle_provider_config(
-                ProviderConfigurationResponse(**kwargs["provider_info"]),
-                kwargs["provider_info"]["issuer"])
-            client.store_registration_info(RegistrationResponse(
-                **kwargs["client_registration"]))
-        elif _key_set == set(["srv_discovery_url", "client_registration"]):
-            _ = client.provider_config(kwargs["srv_discovery_url"])
-            client.store_registration_info(RegistrationResponse(
-                **kwargs["client_registration"]))
-        else:
-            raise Exception("Configuration error ?")
-
-        return client
-
-    def dynamic_client(self, userid):
-        client = self.client_cls(client_authn_method=CLIENT_AUTHN_METHOD,
-                                 verify_ssl=self.config.VERIFY_SSL)
-
-        issuer = client.wf.discovery_query(userid)
-        if issuer in self.client:
-            return self.client[issuer]
-        else:
-            # Gather OP information
-            _pcr = client.provider_config(issuer)
-            # register the client
-            _ = client.register(_pcr["registration_endpoint"],
-                                **self.config.CLIENTS[""]["client_info"])
-            try:
-                client.behaviour.update(**self.config.CLIENTS[""]["behaviour"])
-            except KeyError:
-                pass
-
-            self.client[issuer] = client
-            return client
-
-    def __getitem__(self, item):
-        """
-        Given a service or user identifier return a suitable client
-        :param item:
-        :return:
-        """
+def create_client(**kwargs):
+    """
+    kwargs = config.CLIENT.iteritems
+    """
+    _key_set = set(kwargs.keys())
+    args = {}
+    for param in ["verify_ssl"]:
         try:
-            return self.client[item]
+            args[param] = kwargs[param]
         except KeyError:
-            return self.dynamic_client(item)
+            pass
+        else:
+            _key_set.discard(param)
 
-    def keys(self):
-        return self.client.keys()
+    client = Client(client_authn_method=CLIENT_AUTHN_METHOD,
+                    behaviour=kwargs["behaviour"],
+                    verify_ssl=conf.VERIFY_SSL, **args)
+
+    # The behaviour parameter is not significant for the election process
+    _key_set.discard("behaviour")
+    for param in ["allow"]:
+        try:
+            setattr(client, param, kwargs[param])
+        except KeyError:
+            pass
+        else:
+            _key_set.discard(param)
+
+    if _key_set == set(["client_info"]):  # Everything dynamic
+        # There has to be a userid
+        if not userid:
+            raise MissingAttribute("Missing userid specification")
+
+        # Find the service that provides information about the OP
+        issuer = client.wf.discovery_query(userid)
+        # Gather OP information
+        _ = client.provider_config(issuer)
+        # register the client
+        _ = client.register(client.provider_info["registration_endpoint"],
+                            **kwargs["client_info"])
+    elif _key_set == set(["client_info", "srv_discovery_url"]):
+        # Ship the webfinger part
+        # Gather OP information
+        _ = client.provider_config(kwargs["srv_discovery_url"])
+        # register the client
+        _ = client.register(client.provider_info["registration_endpoint"],
+                            **kwargs["client_info"])
+    elif _key_set == set(["provider_info", "client_info"]):
+        client.handle_provider_config(
+            ProviderConfigurationResponse(**kwargs["provider_info"]),
+            kwargs["provider_info"]["issuer"])
+        _ = client.register(client.provider_info["registration_endpoint"],
+                            **kwargs["client_info"])
+    elif _key_set == set(["provider_info", "client_registration"]):
+        client.handle_provider_config(
+            ProviderConfigurationResponse(**kwargs["provider_info"]),
+            kwargs["provider_info"]["issuer"])
+        client.store_registration_info(RegistrationResponse(
+            **kwargs["client_registration"]))
+    elif _key_set == set(["srv_discovery_url", "client_registration"]):
+        _ = client.provider_config(kwargs["srv_discovery_url"])
+        client.store_registration_info(RegistrationResponse(
+            **kwargs["client_registration"]))
+    else:
+        raise Exception("Configuration error ?")
+
+    return client

@@ -9,7 +9,8 @@ import ckan.lib.base as base
 
 from pylons import config, request
 
-from oidc import OIDCClients
+import conf
+from oidc import create_client
 
 plugin_config_prefix = 'ckanext.ozwillo_pyoidc.'
 
@@ -51,7 +52,7 @@ class OzwilloPyoidcPlugin(plugins.SingletonPlugin):
         global CLIENT
         if 'organization_id' in session:
             g = model.Group.get(session['organization_id'])
-            conf.CLIENTS['ozwillo']['client_registration'].update({
+            conf.CLIENT['client_registration'].update({
                 'client_id': g._extras['client_id'].value,
                 'client_secret': g._extras['client_secret'].value,
                 'redirect_uris': [toolkit.url_for(host=request.host,
@@ -61,7 +62,7 @@ class OzwilloPyoidcPlugin(plugins.SingletonPlugin):
                                                   qualified=True)]
                 })
             log.info('registration info for organization "%s" set' % g.name)
-            CLIENT = OIDCClients(conf)['ozwillo']
+            CLIENT = create_client(**conf.CLIENT)
             url, ht_args = CLIENT.create_authn_request(session, conf.ACR_VALUES)
             if ht_args:
                 toolkit.request.headers.update(ht_args)
