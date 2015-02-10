@@ -119,7 +119,7 @@ class OpenidController(base.BaseController):
         Revokes the delivered access token. Logs out the user
         """
         global CLIENT
-        logout_url = str(CLIENT.end_session_endpoint)
+        logout_url = CLIENT.end_session_endpoint
         org_url = toolkit.url_for(host=request.host,
                                   controller='organization',
                                   action='read',
@@ -136,4 +136,4 @@ class OpenidController(base.BaseController):
         # redirect to IDP logout
         logout_url += '?id_token_hint=%s&' % CLIENT.id_token
         logout_url += 'post_logout_redirect_uri=%s' % redirect_uri
-        toolkit.redirect_to(logout_url)
+        toolkit.redirect_to(str(logout_url))
