@@ -85,7 +85,8 @@ class OzwilloPyoidcPlugin(plugins.SingletonPlugin):
             toolkit.redirect_to('/')
 
     def logout(self):
-        pass
+        session['user'] = None
+        session.save()
 
     def update_config(self, config_):
         toolkit.add_template_directory(config_, 'templates')
