@@ -126,7 +126,7 @@ class OpenidController(base.BaseController):
         org_url = toolkit.url_for(host=request.host,
                                   controller="organization",
                                   action='read',
-                                  id=g.id,
+                                  id=g.name,
                                   qualified=True)
         toolkit.redirect_to(org_url)
 
@@ -140,7 +140,7 @@ class OpenidController(base.BaseController):
         org_url = toolkit.url_for(host=request.host,
                                   controller='organization',
                                   action='read',
-                                  id=session['organization_id'],
+                                  id=g.name,
                                   qualified=True)
         redirect_uri = org_url + '/logout'
 
