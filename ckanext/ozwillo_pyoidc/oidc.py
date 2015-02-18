@@ -17,11 +17,12 @@ class OIDCError(Exception):
 
 
 class Client(oic.Client):
-    def __init__(self, client_id=None, ca_certs=None,
+    def __init__(self, client_id=None, client_secret=None, ca_certs=None,
                  client_prefs=None, client_authn_method=None, keyjar=None,
                  verify_ssl=True, behaviour=None):
-        oic.Client.__init__(self, client_id, ca_certs, client_prefs,
-                            client_authn_method, keyjar, verify_ssl)
+        oic.Client.__init__(self, client_id, client_secret, ca_certs,
+                            client_prefs, client_authn_method,
+                            keyjar, verify_ssl)
         if behaviour:
             self.behaviour = behaviour
 
@@ -111,11 +112,11 @@ def create_client(**kwargs):
     """
     _key_set = set(kwargs.keys())
     args = {}
-    for param in ["verify_ssl"]:
+    for param in ["verify_ssl", "client_id", "client_secret"]:
         try:
             args[param] = kwargs[param]
         except KeyError:
-            pass
+            args[param] = kwargs['client_registration'][param]
         else:
             _key_set.discard(param)
 
