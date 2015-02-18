@@ -116,7 +116,10 @@ def create_client(**kwargs):
         try:
             args[param] = kwargs[param]
         except KeyError:
-            args[param] = kwargs['client_registration'][param]
+            try:
+                args[param] = kwargs['client_registration'][param]
+            except KeyError:
+                pass
         else:
             _key_set.discard(param)
 
