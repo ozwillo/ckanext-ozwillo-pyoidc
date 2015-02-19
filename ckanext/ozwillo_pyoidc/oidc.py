@@ -33,7 +33,7 @@ class Client(oic.Client):
             "response_type": self.behaviour["response_type"],
             "scope": self.behaviour["scope"],
             "state": session["state"],
-            # "nonce": session["nonce"],
+            "nonce": session["nonce"],
             "redirect_uri": self.registration_response["redirect_uris"][0]
         }
 
