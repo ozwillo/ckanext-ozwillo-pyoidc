@@ -127,7 +127,6 @@ class OpenidController(base.BaseController):
         log.info('Received userinfo: %s' % userinfo)
         userobj = model.User.get(userinfo['sub'])
         if userobj:
-            userobj.name = userinfo['nickname']
             userobj.email = userinfo['email']
             if 'given_name' in userinfo:
                 userobj.fullname = userinfo['given_name']
