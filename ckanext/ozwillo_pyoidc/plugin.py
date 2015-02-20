@@ -85,22 +85,20 @@ class OzwilloPyoidcPlugin(plugins.SingletonPlugin):
             toolkit.redirect_to('/')
 
     def logout(self):
+        log.info('Logging out user: %s' % session['user'])
         session['user'] = None
-        try:
-            g = model.Group.get(session['organization_id'])
-        except:
-            toolkit.redirect_to('/')
-        else:
-            session['organization_id'] = None
-            session.save()
-
+        session.save()
+        g = model.Group.get(session['organization_id'])
+        if g:
             org_url = toolkit.url_for(host=request.host,
                                       controller='organization',
                                       action='read',
                                       id=g.name,
                                       qualified=True)
 
-            toolkit.redirect_to(org_url)
+            toolkit.redirect_to(str(org_url))
+        else:
+            toolkit.redirect_to('/')
 
     def update_config(self, config_):
         toolkit.add_template_directory(config_, 'templates')
