@@ -21,7 +21,7 @@ ME = {
     "response_types": ["code"]
 }
 
-ACR_VALUES = ["SAML"]
+ACR_VALUES = None
 
 CLIENT = {
     "srv_discovery_url": "https://accounts.ozwillo-preprod.eu/",

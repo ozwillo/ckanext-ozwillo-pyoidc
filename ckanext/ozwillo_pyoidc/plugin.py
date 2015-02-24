@@ -1,5 +1,4 @@
 import logging
-import conf
 
 import ckan.plugins as plugins
 import ckan.plugins.toolkit as toolkit
