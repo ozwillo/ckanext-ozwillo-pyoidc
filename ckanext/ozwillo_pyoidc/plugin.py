@@ -138,8 +138,9 @@ class OpenidController(base.BaseController):
                                   controller="organization",
                                   action='read',
                                   id=g.name,
+                                  locale=userinfo.get('locale'),
                                   qualified=True)
-        toolkit.redirect_to(org_url)
+        toolkit.redirect_to(str(org_url))
 
     def slo(self):
         """
