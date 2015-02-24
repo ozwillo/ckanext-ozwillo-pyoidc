@@ -1,0 +1,18 @@
+{% extends "page.html" %}
+
+{% block primary_content %}
+
+  <section class="module">
+    <div class="module-content">
+      <h4>
+        {% block page_heading %}
+        {{ _('You are about to logout...') }}
+        {% endblock %}
+      </h4>
+      <form method="post" action="{{ c.slo_url }} ">
+        <input type="submit" value="{% trans %}Continue{% endtrans %}" />
+      </form>
+    </div>
+  </section>
+
+{% endblock %}

@@ -14,7 +14,7 @@ from oidc import create_client
 plugin_config_prefix = 'ckanext.ozwillo_pyoidc.'
 
 log = logging.getLogger(__name__)
-plugin_controller = 'ckanext.ozwillo_pyoidc.plugin:OpenidController'
+plugin_controller = __name__ + ':OpenidController'
 
 _CLIENTS = {}
 
@@ -55,9 +55,12 @@ class OzwilloPyoidcPlugin(plugins.SingletonPlugin):
         map.connect('/organization/{id:.*}/callback',
                     controller=plugin_controller,
                     action='callback')
+        map.connect('/logout', controller=plugin_controller,
+                    action='logout')
         map.connect('/user/slo',
                     controller=plugin_controller,
-                    action='slo')
+                    action='slo',
+                    conditions={'method': ['POST']})
         map.redirect('/organization/{id:.*}/logout', '/user/_logout')
 
         return map
@@ -140,27 +143,40 @@ class OpenidController(base.BaseController):
                                   qualified=True)
         toolkit.redirect_to(str(org_url))
 
+    def logout(self):
+        toolkit.c.slo_url = toolkit.url_for(host=request.host,
+                                            controller=plugin_controller,
+                                            action="slo",
+                                            qualified=True)
+        return base.render('logout_confirm.html')
+
     def slo(self):
         """
         Revokes the delivered access token. Logs out the user
         """
         g = model.Group.get(session['organization_id'])
-        client = Clients.get(g)
-        logout_url = client.end_session_endpoint
         org_url = toolkit.url_for(host=request.host,
                                   controller='organization',
                                   action='read',
                                   id=g.name,
                                   qualified=True)
-        redirect_uri = org_url + '/logout'
+        org_url = str(org_url)
 
-        # revoke the access token
-        headers = {'Content-Type': 'application/x-www-form-urlencoded'}
-        data = 'token=%s&token_type_hint=access_token' % client.access_token
-        client.http_request(client.revocation_endpoint, 'POST',
-                            data=data, headers=headers)
+        if toolkit.c.user and request.method == 'POST':
+            client = Clients.get(g)
+            logout_url = client.end_session_endpoint
 
-        # redirect to IDP logout
-        logout_url += '?id_token_hint=%s&' % client.id_token
-        logout_url += 'post_logout_redirect_uri=%s' % redirect_uri
-        toolkit.redirect_to(str(logout_url))
+            redirect_uri = org_url + '/logout'
+
+            # revoke the access token
+            headers = {'Content-Type': 'application/x-www-form-urlencoded'}
+            data = 'token=' + client.access_token
+            data += '&token_type_hint=access_token'
+            client.http_request(client.revocation_endpoint, 'POST',
+                                data=data, headers=headers)
+
+            # redirect to IDP logout
+            logout_url += '?id_token_hint=%s&' % client.id_token
+            logout_url += 'post_logout_redirect_uri=%s' % redirect_uri
+            toolkit.redirect_to(logout_url)
+        toolkit.redirect_to(org_url)
