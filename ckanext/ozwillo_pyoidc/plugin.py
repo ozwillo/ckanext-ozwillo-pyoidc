@@ -2,11 +2,11 @@ import logging
 
 import ckan.plugins as plugins
 import ckan.plugins.toolkit as toolkit
-from ckan.common import session, c, request
+from ckan.common import session, c, request, response
 from ckan import model
 import ckan.lib.base as base
 
-from pylons import config, request
+from pylons import config
 
 import conf
 from oidc import create_client
@@ -76,6 +76,10 @@ class OzwilloPyoidcPlugin(plugins.SingletonPlugin):
             toolkit.c.userobj = userobj
 
     def login(self):
+        for cookie in request.cookies:
+            value = request.cookies.get(cookie)
+            response.set_cookie(cookie, value, secure=True, httponly=True)
+
         if 'organization_id' in session:
             g = model.Group.get(session['organization_id'])
             client = Clients.get(g)
