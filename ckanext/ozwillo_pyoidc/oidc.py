@@ -26,14 +26,14 @@ class Client(oic.Client):
         if behaviour:
             self.behaviour = behaviour
 
-    def create_authn_request(self, session, acr_value=None):
-        session["state"] = rndstr()
-        session["nonce"] = rndstr()
+    def create_authn_request(self, acr_value=None):
+        self.state = rndstr()
+        nonce = rndstr()
         request_args = {
             "response_type": self.behaviour["response_type"],
             "scope": self.behaviour["scope"],
-            "state": session["state"],
-            "nonce": session["nonce"],
+            "state": self.state,
+            "nonce": nonce,
             "redirect_uri": self.registration_response["redirect_uris"][0]
         }
 
@@ -63,6 +63,9 @@ class Client(oic.Client):
         """
         authresp = self.parse_response(AuthorizationResponse, response,
                                        sformat="dict", keyjar=self.keyjar)
+
+        if self.state != authresp['state']:
+            raise OIDCError("Invalid state %s." % authresp["state"])
 
         if isinstance(authresp, ErrorResponse):
             return OIDCError("Access denied")

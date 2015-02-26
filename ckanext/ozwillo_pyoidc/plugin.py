@@ -84,7 +84,7 @@ class OzwilloPyoidcPlugin(plugins.SingletonPlugin):
         if 'organization_id' in session:
             g = model.Group.get(session['organization_id'])
             client = Clients.get(g)
-            url, ht_args = client.create_authn_request(session, conf.ACR_VALUES)
+            url, ht_args = client.create_authn_request(conf.ACR_VALUES)
             if ht_args:
                 toolkit.request.headers.update(ht_args)
             redirect_to(url)
