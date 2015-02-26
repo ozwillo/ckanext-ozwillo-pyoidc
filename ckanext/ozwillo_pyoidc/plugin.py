@@ -173,6 +173,9 @@ class OpenidController(base.BaseController):
 
             redirect_uri = org_url + '/logout'
 
+            if not hasattr(client, 'access_token'):
+                self.sso(g.name)
+
             # revoke the access token
             headers = {'Content-Type': 'application/x-www-form-urlencoded'}
             data = 'token=' + client.access_token
