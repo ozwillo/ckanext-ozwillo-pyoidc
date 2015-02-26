@@ -131,6 +131,10 @@ class OpenidController(base.BaseController):
         userinfo = client.callback(request.GET)
         log.info('Received userinfo: %s' % userinfo)
         userobj = model.User.get(userinfo['sub'])
+        locale = userinfo.get('locale')
+        if '-' in locale:
+            locale, country = locale.split('-')
+
         if userobj:
             if 'given_name' in userinfo:
                 userobj.fullname = userinfo['given_name']
@@ -144,7 +148,7 @@ class OpenidController(base.BaseController):
                                   controller="organization",
                                   action='read',
                                   id=g.name,
-                                  locale=userinfo.get('locale'),
+                                  locale=locale,
                                   qualified=True)
         redirect_to(str(org_url))
 
