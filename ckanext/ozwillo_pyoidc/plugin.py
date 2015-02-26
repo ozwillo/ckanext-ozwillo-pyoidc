@@ -1,4 +1,5 @@
 import logging
+from routes import redirect_to
 
 import ckan.plugins as plugins
 import ckan.plugins.toolkit as toolkit
@@ -86,9 +87,9 @@ class OzwilloPyoidcPlugin(plugins.SingletonPlugin):
             url, ht_args = client.create_authn_request(session, conf.ACR_VALUES)
             if ht_args:
                 toolkit.request.headers.update(ht_args)
-            toolkit.redirect_to(url)
+            redirect_to(url)
         else:
-            toolkit.redirect_to('/')
+            redirect_to('/')
 
     def logout(self):
         log.info('Logging out user: %s' % session['user'])
@@ -102,9 +103,9 @@ class OzwilloPyoidcPlugin(plugins.SingletonPlugin):
                                       id=g.name,
                                       qualified=True)
 
-            toolkit.redirect_to(str(org_url))
+            redirect_to(str(org_url))
         else:
-            toolkit.redirect_to('/')
+            redirect_to('/')
 
     def update_config(self, config_):
         toolkit.add_template_directory(config_, 'templates')
@@ -122,7 +123,7 @@ class OpenidController(base.BaseController):
                                     controller='user',
                                     action='login',
                                     qualified=True)
-        toolkit.redirect_to(login_url)
+        redirect_to(login_url)
 
     def callback(self):
         g = model.Group.get(session['organization_id'])
@@ -145,7 +146,7 @@ class OpenidController(base.BaseController):
                                   id=g.name,
                                   locale=userinfo.get('locale'),
                                   qualified=True)
-        toolkit.redirect_to(str(org_url))
+        redirect_to(str(org_url))
 
     def logout(self):
         toolkit.c.slo_url = toolkit.url_for(host=request.host,
@@ -182,5 +183,5 @@ class OpenidController(base.BaseController):
             # redirect to IDP logout
             logout_url += '?id_token_hint=%s&' % client.id_token
             logout_url += 'post_logout_redirect_uri=%s' % redirect_uri
-            toolkit.redirect_to(logout_url)
-        toolkit.redirect_to(org_url)
+            redirect_to(logout_url)
+        redirect_to(org_url)
