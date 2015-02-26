@@ -183,5 +183,7 @@ class OpenidController(base.BaseController):
             # redirect to IDP logout
             logout_url += '?id_token_hint=%s&' % client.id_token
             logout_url += 'post_logout_redirect_uri=%s' % redirect_uri
+            for cookie in request.cookies:
+                response.delete_cookie(cookie)
             redirect_to(logout_url)
         redirect_to(org_url)
