@@ -1,5 +1,5 @@
 import logging
-from routes import redirect_to
+from routes import redirect_to, url_for
 
 import ckan.plugins as plugins
 import ckan.plugins.toolkit as toolkit
@@ -35,11 +35,11 @@ class Clients(object):
         params['client_registration'].update({
             'client_id': g._extras['client_id'].value,
             'client_secret': g._extras['client_secret'].value,
-            'redirect_uris': [toolkit.url_for(host=request.host,
-                                              controller=plugin_controller,
-                                              action='callback',
-                                              id=g.name,
-                                              qualified=True)]
+            'redirect_uris': [url_for(host=request.host,
+                                      controller=plugin_controller,
+                                      action='callback',
+                                      id=g.name,
+                                      qualified=True)]
         })
         return create_client(**params)
 
