@@ -1,18 +1,17 @@
 {% extends "page.html" %}
 
 {% block primary_content %}
-
   <section class="module">
     <div class="module-content">
-      <h4>
+      <h3>
         {% block page_heading %}
-        {{ _('You are about to logout...') }}
+        {{ _('Logout from CKAN') }}
         {% endblock %}
-      </h4>
-      <form method="post" action="{{ c.slo_url }} ">
-        <input type="submit" value="{% trans %}Continue{% endtrans %}" />
+      </h3>
+      <form method="post" action="{{ c.slo_url }}">
+        <button>{% trans %}Logout{% endtrans %}</button>
+        <a href="{{ c.org_url }}" class="portal">{% trans %}Go back to CKAN{% endtrans %}</a>
       </form>
     </div>
   </section>
-
 {% endblock %}
