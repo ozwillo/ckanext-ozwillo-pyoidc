@@ -192,5 +192,5 @@ class OpenidController(base.BaseController):
             logout_url += 'post_logout_redirect_uri=%s' % redirect_uri
             for cookie in request.cookies:
                 response.delete_cookie(cookie)
-            redirect_to(logout_url)
+            redirect_to(str(logout_url))
         redirect_to(org_url)
