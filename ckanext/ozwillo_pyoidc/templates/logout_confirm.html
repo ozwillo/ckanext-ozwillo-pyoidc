@@ -10,7 +10,7 @@
       </h3>
       <form method="post" action="{{ c.slo_url }}">
         <button>{% trans %}Logout{% endtrans %}</button>
-        <a href="{{ c.org_url }}" class="portal">{% trans %}Go back to CKAN{% endtrans %}</a>
+        <a href="{{ h.url_for('/') }}" class="portal">{% trans %}Go back to CKAN{% endtrans %}</a>
       </form>
     </div>
   </section>
