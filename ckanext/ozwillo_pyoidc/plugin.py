@@ -129,13 +129,15 @@ class OpenidController(base.BaseController):
         g = model.Group.get(session['organization_id'])
         client = Clients.get(g)
         userinfo = client.callback(request.GET)
+        locale = None
         log.info('Received userinfo: %s' % userinfo)
-        userobj = model.User.get(userinfo['sub'])
-        locale = userinfo.get('locale')
-        if '-' in locale:
-            locale, country = locale.split('-')
 
-        if userobj:
+        if 'sub' in userinfo:
+            locale = userinfo.get('locale', '')
+            if '-' in locale:
+                locale, country = locale.split('-')
+
+            userobj = model.User.get(userinfo['sub'])
             if 'given_name' in userinfo:
                 userobj.fullname = userinfo['given_name']
             if 'family_name' in userinfo:
