@@ -57,12 +57,9 @@ class OzwilloPyoidcPlugin(plugins.SingletonPlugin):
         map.connect('/organization/{id:.*}/callback',
                     controller=plugin_controller,
                     action='callback')
-        map.connect('/logout', controller=plugin_controller,
-                    action='logout')
         map.connect('/user/slo',
                     controller=plugin_controller,
-                    action='slo',
-                    conditions={'method': ['POST']})
+                    action='slo')
         map.redirect('/organization/{id:.*}/logout', '/user/_logout')
 
         return map
@@ -193,17 +190,15 @@ class OpenidController(base.BaseController):
 
         redirect_to(org_url)
 
-    def logout(self):
-        toolkit.c.slo_url = toolkit.url_for(host=request.host,
-                                            controller=plugin_controller,
-                                            action="slo",
-                                            qualified=True)
-        return base.render('logout_confirm.html')
 
     def slo(self):
         """
         Revokes the delivered access token. Logs out the user
         """
+
+        if not request.referer or request.host not in request.referer:
+            redirect_to('/')
+
         g = model.Group.get(session['organization_id'])
         org_url = toolkit.url_for(host=request.host,
                                   controller='organization',
@@ -212,7 +207,7 @@ class OpenidController(base.BaseController):
                                   qualified=True)
         org_url = str(org_url)
 
-        if toolkit.c.user and request.method == 'POST':
+        if toolkit.c.user:
             client = Clients.get(g)
             logout_url = client.end_session_endpoint
 
