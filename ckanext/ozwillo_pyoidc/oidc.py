@@ -90,6 +90,9 @@ class Client(oic.Client):
                 atresp = self.do_access_token_request(
                     scope="openid", state=authresp["state"], request_args=args,
                     authn_method=self.registration_response["token_endpoint_auth_method"])
+                id_token = atresp['id_token']
+                self.app_admin = 'app_admin' in id_token and id_token['app_admin']
+                self.app_user = 'app_user' in id_token  and id_token['app_user']
             except Exception as err:
                 logger.error("%s" % err)
                 raise

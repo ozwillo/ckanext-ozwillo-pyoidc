@@ -5,6 +5,7 @@ import ckan.plugins as plugins
 import ckan.plugins.toolkit as toolkit
 from ckan.common import session, c, request, response
 from ckan import model
+from ckan.logic.action.create import user_create, member_create
 import ckan.lib.base as base
 
 from pylons import config
@@ -134,27 +135,63 @@ class OpenidController(base.BaseController):
         locale = None
         log.info('Received userinfo: %s' % userinfo)
 
-        if 'sub' in userinfo:
+        if 'locale' in userinfo:
             locale = userinfo.get('locale', '')
             if '-' in locale:
                 locale, country = locale.split('-')
 
+        org_url = str(toolkit.url_for(host=request.host,
+                                      controller="organization",
+                                      action='read',
+                                      id=g.name,
+                                      locale=locale,
+                                      qualified=True))
+        if 'sub' in userinfo:
+
             userobj = model.User.get(userinfo['sub'])
+            if not userobj:
+                user_dict = {'id': userinfo['sub'],
+                             'name': userinfo['sub'].replace('-', ''),
+                             'email': userinfo['email'],
+                             'password': userinfo['sub']
+                             }
+                context = {'ignore_auth': True, 'model': model,
+                           'session': model.Session}
+                user_create(context, user_dict)
+                userobj = model.User.get(userinfo['sub'])
+                if client.app_admin or client.app_user:
+                    member_dict = {
+                        'id': g.id,
+                        'object': userinfo['sub'],
+                        'object_type': 'user',
+                        'capacity': 'admin',
+                    }
+
+                    member_create_context = {
+                        'model': model,
+                        'user': userobj.name,
+                        'ignore_auth': True,
+                        'session': session
+                    }
+
+                    member_create(member_create_context, member_dict)
+
+            if 'nickname' in userinfo:
+                userobj.name = userinfo['nickname']
+            try:
+                userobj.save()
+            except Exception, e:
+                log.warning('Error while saving user name: %s' % e)
+
             if 'given_name' in userinfo:
                 userobj.fullname = userinfo['given_name']
             if 'family_name' in userinfo:
-                userobj.fullname += userinfo['family_name']
+                userobj.fullname += ' ' + userinfo['family_name']
             userobj.save()
             session['user'] = userobj.id
             session.save()
 
-        org_url = toolkit.url_for(host=request.host,
-                                  controller="organization",
-                                  action='read',
-                                  id=g.name,
-                                  locale=locale,
-                                  qualified=True)
-        redirect_to(str(org_url))
+        redirect_to(org_url)
 
     def logout(self):
         toolkit.c.slo_url = toolkit.url_for(host=request.host,

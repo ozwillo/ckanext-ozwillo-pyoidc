@@ -32,7 +32,7 @@ CLIENT = {
     },
     "behaviour": {
         "response_type": "code",
-        "scope": ["openid", "profile"]
+        "scope": ["openid", "profile", "email"]
     },
     "allow": {
         "issuer_mismatch": True
