@@ -201,11 +201,11 @@ class OpenidController(base.BaseController):
             redirect_to('/')
 
         g = model.Group.get(session['organization_id'])
-        org_url = toolkit.url_for(host=request.host,
-                                  controller='organization',
-                                  action='read',
-                                  id=g.name,
-                                  qualified=True)
+        org_url = url_for(host=request.host,
+                          controller='organization',
+                          action='read',
+                          id=g.name,
+                          qualified=True)
         org_url = str(org_url)
 
         if toolkit.c.user:
