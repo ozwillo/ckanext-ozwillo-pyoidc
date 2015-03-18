@@ -173,6 +173,12 @@ class OpenidController(base.BaseController):
 
                     member_create(member_create_context, member_dict)
 
+            if 'given_name' in userinfo:
+                userobj.fullname = userinfo['given_name']
+            if 'family_name' in userinfo:
+                userobj.fullname += ' ' + userinfo['family_name']
+            userobj.save()
+
             if 'nickname' in userinfo:
                 userobj.name = userinfo['nickname']
             try:
@@ -180,11 +186,6 @@ class OpenidController(base.BaseController):
             except Exception, e:
                 log.warning('Error while saving user name: %s' % e)
 
-            if 'given_name' in userinfo:
-                userobj.fullname = userinfo['given_name']
-            if 'family_name' in userinfo:
-                userobj.fullname += ' ' + userinfo['family_name']
-            userobj.save()
             session['user'] = userobj.id
             session.save()
 
