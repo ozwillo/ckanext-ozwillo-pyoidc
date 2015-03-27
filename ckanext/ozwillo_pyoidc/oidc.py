@@ -63,9 +63,11 @@ class Client(oic.Client):
         """
         authresp = self.parse_response(AuthorizationResponse, response,
                                        sformat="dict", keyjar=self.keyjar)
-
-        if self.state != authresp['state']:
-            raise OIDCError("Invalid state %s." % authresp["state"])
+        try:
+            if self.state != authresp['state']:
+                raise OIDCError("Invalid state %s." % authresp["state"])
+        except AttributeError:
+            raise OIDCError("access denied")
 
         if isinstance(authresp, ErrorResponse):
             return OIDCError("Access denied")

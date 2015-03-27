@@ -7,11 +7,12 @@ from ckan.common import session, c, request, response
 from ckan import model
 from ckan.logic.action.create import user_create, member_create
 import ckan.lib.base as base
+from ckan.lib.helpers import flash_error
 
 from pylons import config
 
 import conf
-from oidc import create_client
+from oidc import create_client, OIDCError
 
 plugin_config_prefix = 'ckanext.ozwillo_pyoidc.'
 
@@ -128,7 +129,14 @@ class OpenidController(base.BaseController):
     def callback(self):
         g = model.Group.get(session['organization_id'])
         client = Clients.get(g)
-        userinfo = client.callback(request.GET)
+        org_url = str(toolkit.url_for(controller="organization",
+                                      action='read',
+                                      id=g.name))
+        try:
+            userinfo = client.callback(request.GET)
+        except OIDCError, e:
+            flash_error('Login failed')
+            redirect_to(org_url, qualified=True)
         locale = None
         log.info('Received userinfo: %s' % userinfo)
 
@@ -137,12 +145,7 @@ class OpenidController(base.BaseController):
             if '-' in locale:
                 locale, country = locale.split('-')
 
-        org_url = str(toolkit.url_for(host=request.host,
-                                      controller="organization",
-                                      action='read',
-                                      id=g.name,
-                                      locale=locale,
-                                      qualified=True))
+        org_url = toolkit.url_for(org_url, locale=locale, qualified=True)
         if 'sub' in userinfo:
 
             userobj = model.User.get(userinfo['sub'])
