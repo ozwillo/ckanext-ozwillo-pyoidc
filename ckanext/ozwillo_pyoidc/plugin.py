@@ -145,7 +145,7 @@ class OpenidController(base.BaseController):
             if '-' in locale:
                 locale, country = locale.split('-')
 
-        org_url = toolkit.url_for(org_url, locale=locale, qualified=True)
+        org_url = str(toolkit.url_for(org_url, locale=locale, qualified=True))
         if 'sub' in userinfo:
 
             userobj = model.User.get(userinfo['sub'])
