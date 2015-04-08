@@ -19,20 +19,11 @@ plugin_config_prefix = 'ckanext.ozwillo_pyoidc.'
 log = logging.getLogger(__name__)
 plugin_controller = __name__ + ':OpenidController'
 
-_CLIENTS = {}
 
 class Clients(object):
 
     @classmethod
-    def get(cls, g):
-        global _CLIENTS
-        if g.id in _CLIENTS:
-            return _CLIENTS.get(g.id)
-        client = cls().get_client(g)
-        _CLIENTS.update({g.id: client})
-        return client
-
-    def get_client(self, g):
+    def get_client(cls, g):
         params = conf.CLIENT.copy()
         params['client_registration'].update({
             'client_id': g._extras['client_id'].value,
@@ -82,8 +73,10 @@ class OzwilloPyoidcPlugin(plugins.SingletonPlugin):
 
         if 'organization_id' in session:
             g = model.Group.get(session['organization_id'])
-            client = Clients.get(g)
-            url, ht_args = client.create_authn_request(conf.ACR_VALUES)
+            client = Clients.get_client(g)
+            url, ht_args, state = client.create_authn_request(conf.ACR_VALUES)
+            session['state'] = state
+            session.save()
             if ht_args:
                 toolkit.request.headers.update(ht_args)
             redirect_to(url)
@@ -128,12 +121,16 @@ class OpenidController(base.BaseController):
 
     def callback(self):
         g = model.Group.get(session['organization_id'])
-        client = Clients.get(g)
+        client = Clients.get_client(g)
         org_url = str(toolkit.url_for(controller="organization",
                                       action='read',
                                       id=g.name))
         try:
-            userinfo = client.callback(request.GET)
+            userinfo, app_admin, app_user, access_token, id_token \
+                = client.callback(session['state'], request.GET)
+            session['access_token'] = access_token
+            session['id_token'] = id_token
+            session.save()
         except OIDCError, e:
             flash_error('Login failed')
             redirect_to(org_url, qualified=True)
@@ -159,7 +156,7 @@ class OpenidController(base.BaseController):
                            'session': model.Session}
                 user_create(context, user_dict)
                 userobj = model.User.get(userinfo['sub'])
-                if client.app_admin or client.app_user:
+                if app_admin or app_user:
                     member_dict = {
                         'id': g.id,
                         'object': userinfo['sub'],
@@ -212,23 +209,20 @@ class OpenidController(base.BaseController):
         org_url = str(org_url)
 
         if toolkit.c.user:
-            client = Clients.get(g)
+            client = Clients.get_client(g)
             logout_url = client.end_session_endpoint
 
             redirect_uri = org_url + '/logout'
 
-            if not hasattr(client, 'access_token'):
-                self.sso(g.name)
-
             # revoke the access token
             headers = {'Content-Type': 'application/x-www-form-urlencoded'}
-            data = 'token=' + client.access_token
+            data = 'token=' + session.get('access_token')
             data += '&token_type_hint=access_token'
             client.http_request(client.revocation_endpoint, 'POST',
                                 data=data, headers=headers)
 
             # redirect to IDP logout
-            logout_url += '?id_token_hint=%s&' % client.id_token
+            logout_url += '?id_token_hint=%s&' % session.get('id_token')
             logout_url += 'post_logout_redirect_uri=%s' % redirect_uri
             redirect_to(str(logout_url))
         redirect_to(org_url)
