@@ -25,6 +25,7 @@ class Clients(object):
     @classmethod
     def get_client(cls, g):
         params = conf.CLIENT.copy()
+        params['srv_discovery_url'] = config.get('%s.ozwillo_discovery_url' % __name__)
         params['client_registration'].update({
             'client_id': g._extras['client_id'].value,
             'client_secret': g._extras['client_secret'].value,
