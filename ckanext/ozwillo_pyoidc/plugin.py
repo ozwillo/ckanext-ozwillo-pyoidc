@@ -157,22 +157,23 @@ class OpenidController(base.BaseController):
                            'session': model.Session}
                 user_create(context, user_dict)
                 userobj = model.User.get(userinfo['sub'])
-                if app_admin or app_user:
-                    member_dict = {
-                        'id': g.id,
-                        'object': userinfo['sub'],
-                        'object_type': 'user',
-                        'capacity': 'admin',
-                    }
 
-                    member_create_context = {
-                        'model': model,
-                        'user': userobj.name,
-                        'ignore_auth': True,
-                        'session': session
-                    }
+        if app_admin or app_user:
+            member_dict = {
+                'id': g.id,
+                'object': userinfo['sub'],
+                'object_type': 'user',
+                'capacity': 'admin',
+            }
 
-                    member_create(member_create_context, member_dict)
+            member_create_context = {
+                'model': model,
+                'user': userobj.name,
+                'ignore_auth': True,
+                'session': session
+            }
+
+            member_create(member_create_context, member_dict)
 
             if 'given_name' in userinfo:
                 userobj.fullname = userinfo['given_name']
