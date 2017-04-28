@@ -1,33 +1,3 @@
-.. You should enable this project on travis-ci.org and coveralls.io to make
-   these badges work. The necessary Travis and Coverage config files have been
-   generated for you.
-
-.. image:: https://travis-ci.org/https://dev.entrouvert.org/projects/ckan//ckanext-ozwillo-pyoidc.svg?branch=master
-    :target: https://travis-ci.org/https://dev.entrouvert.org/projects/ckan//ckanext-ozwillo-pyoidc
-
-.. image:: https://coveralls.io/repos/https://dev.entrouvert.org/projects/ckan//ckanext-ozwillo-pyoidc/badge.png?branch=master
-  :target: https://coveralls.io/r/https://dev.entrouvert.org/projects/ckan//ckanext-ozwillo-pyoidc?branch=master
-
-.. image:: https://pypip.in/download/ckanext-ozwillo-pyoidc/badge.svg
-    :target: https://pypi.python.org/pypi//ckanext-ozwillo-pyoidc/
-    :alt: Downloads
-
-.. image:: https://pypip.in/version/ckanext-ozwillo-pyoidc/badge.svg
-    :target: https://pypi.python.org/pypi/ckanext-ozwillo-pyoidc/
-    :alt: Latest Version
-
-.. image:: https://pypip.in/py_versions/ckanext-ozwillo-pyoidc/badge.svg
-    :target: https://pypi.python.org/pypi/ckanext-ozwillo-pyoidc/
-    :alt: Supported Python versions
-
-.. image:: https://pypip.in/status/ckanext-ozwillo-pyoidc/badge.svg
-    :target: https://pypi.python.org/pypi/ckanext-ozwillo-pyoidc/
-    :alt: Development Status
-
-.. image:: https://pypip.in/license/ckanext-ozwillo-pyoidc/badge.svg
-    :target: https://pypi.python.org/pypi/ckanext-ozwillo-pyoidc/
-    :alt: License
-
 =============
 ckanext-ozwillo-pyoidc
 =============
