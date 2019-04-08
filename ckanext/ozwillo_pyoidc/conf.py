@@ -1,5 +1,4 @@
 PORT = 8666
-#BASE = "https://lingon.ladok.umu.se:" + str(PORT) + "/"
 BASE = "http://ckan.dev.entrouvert.org"
 
 
@@ -33,6 +32,9 @@ CLIENT = {
     "behaviour": {
         "response_type": "code",
         "scope": ["openid", "profile", "email"]
+    },
+    "registration_reponse": {
+        "redirect_uris": ["https://opendata.ozwillo-preprod.eu/"]
     },
     "allow": {
         "issuer_mismatch": True

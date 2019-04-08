@@ -16,15 +16,15 @@ setup(
     # http://packaging.python.org/en/latest/tutorial.html#version
     version='0.0.1',
 
-    description='''Openid Connect authentication for CKAN''',
+    description='''Ozwillo's OpenID Connect authentication for CKAN''',
     long_description=long_description,
 
     # The project's main homepage.
-    url='https://dev.entrouvert.org/projects/ckan',
+    url='https://github.com/ozwillo/ckanext-ozwillo-pyoidc',
 
     # Author details
-    author='''Serghei Mihai''',
-    author_email='''smihai @entrouvert.com''',
+    author='Serghei Mihai, Benoit Orihuela',
+    author_email='smihai@entrouvert.com, borihuela@ozwillo.org',
 
     # Choose your license
     license='AGPL',
@@ -35,7 +35,7 @@ setup(
         # 3 - Alpha
         # 4 - Beta
         # 5 - Production/Stable
-        'Development Status :: 4 - Beta',
+        'Development Status :: 5 - Production/Stable',
 
         # Pick your license as you wish (should match "license" above)
         'License :: OSI Approved :: GNU Affero General Public License v3 or later (AGPLv3+)',
@@ -48,7 +48,7 @@ setup(
 
 
     # What does your project relate to?
-    keywords='''CKAN ozwillo openid-connect''',
+    keywords='''CKAN ozwillo OpenID-connect''',
 
     # You can just specify the packages manually here if your project is
     # simple. Or you can use find_packages().
