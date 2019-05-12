@@ -1,15 +1,14 @@
 import logging
-from routes import redirect_to, url_for
 
 import ckan.plugins as plugins
-import ckan.plugins.toolkit as toolkit
-from ckan.common import session, c, request, response
+
+from ckan.plugins.toolkit import url_for, redirect_to, request, response, config, add_template_directory, add_public_directory, add_resource, get_action, c
+
+from ckan.common import session
 from ckan import model
 from ckan.logic.action.create import user_create, member_create
 import ckan.lib.base as base
 from ckan.lib.helpers import flash_error
-
-from pylons import config
 
 import conf
 from oidc import create_client, OIDCError
@@ -62,12 +61,13 @@ class OzwilloPyoidcPlugin(plugins.SingletonPlugin):
 
     def identify(self):
         user = session.get('user')
-        if user and not toolkit.c.userobj:
+        if user and not c.userobj:
             userobj = model.User.get(user)
-            toolkit.c.user = userobj.name
-            toolkit.c.userobj = userobj
+            c.user = userobj.name
+            c.userobj = userobj
 
     def login(self):
+        log.info('Handling login of user %s' % session['user'])
         for cookie in request.cookies:
             value = request.cookies.get(cookie)
             response.set_cookie(cookie, value, secure=True, httponly=True)
@@ -79,7 +79,7 @@ class OzwilloPyoidcPlugin(plugins.SingletonPlugin):
             session['state'] = state
             session.save()
             if ht_args:
-                toolkit.request.headers.update(ht_args)
+                request.headers.update(ht_args)
             redirect_to(url)
         else:
             redirect_to('/')
@@ -92,20 +92,21 @@ class OzwilloPyoidcPlugin(plugins.SingletonPlugin):
         for cookie in request.cookies:
             response.delete_cookie(cookie)
         if g:
-            org_url = toolkit.url_for(host=request.host,
-                                      controller='organization',
-                                      action='read',
-                                      id=g.name,
-                                      qualified=True)
+            org_url = url_for(host=request.host,
+                              controller='organization',
+                              action='read',
+                              id=g.name,
+                              qualified=True)
 
             redirect_to(str(org_url))
         else:
             redirect_to('/')
 
     def update_config(self, config_):
-        toolkit.add_template_directory(config_, 'templates')
-        toolkit.add_public_directory(config_, 'public')
-        toolkit.add_resource('fanstatic', 'ozwillo_pyoidc')
+        add_template_directory(config_, 'templates')
+        add_public_directory(config_, 'public')
+        add_resource('fanstatic', 'ozwillo_pyoidc')
+
 
 class OpenidController(base.BaseController):
 
@@ -114,18 +115,16 @@ class OpenidController(base.BaseController):
         session['organization_id'] = id
         session.save()
         log.info('redirecting to login page')
-        login_url = toolkit.url_for(host=request.host,
-                                    controller='user',
-                                    action='login',
-                                    qualified=True)
+        login_url = url_for(controller='user',
+                            action='login')
         redirect_to(login_url)
 
     def callback(self):
         g = model.Group.get(session['organization_id'])
         client = Clients.get_client(g)
-        org_url = str(toolkit.url_for(controller="organization",
-                                      action='read',
-                                      id=g.name))
+        org_url = str(url_for(controller="organization",
+                              action='read',
+                              id=g.name))
         try:
             userinfo, app_admin, app_user, access_token, id_token \
                 = client.callback(session['state'], request.GET)
@@ -143,7 +142,7 @@ class OpenidController(base.BaseController):
             if '-' in locale:
                 locale, country = locale.split('-')
 
-        org_url = str(toolkit.url_for(org_url, locale=locale, qualified=True))
+        org_url = str(url_for(org_url, locale=locale, qualified=True))
         if 'sub' in userinfo:
 
             userobj = model.User.get(userinfo['sub'])
@@ -210,7 +209,7 @@ class OpenidController(base.BaseController):
                           qualified=True)
         org_url = str(org_url)
 
-        if toolkit.c.user:
+        if c.user:
             client = Clients.get_client(g)
             logout_url = client.end_session_endpoint
 
