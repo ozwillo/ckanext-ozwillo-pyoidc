@@ -38,7 +38,6 @@ class Clients(object):
 
 
 class OzwilloPyoidcPlugin(plugins.SingletonPlugin):
-    plugins.implements(plugins.IConfigurer)
     plugins.implements(plugins.IRoutes)
     plugins.implements(plugins.IAuthenticator, inherit=True)
 
@@ -101,11 +100,6 @@ class OzwilloPyoidcPlugin(plugins.SingletonPlugin):
             redirect_to(str(org_url))
         else:
             redirect_to('/')
-
-    def update_config(self, config_):
-        add_template_directory(config_, 'templates')
-        add_public_directory(config_, 'public')
-        add_resource('fanstatic', 'ozwillo_pyoidc')
 
 
 class OpenidController(base.BaseController):
