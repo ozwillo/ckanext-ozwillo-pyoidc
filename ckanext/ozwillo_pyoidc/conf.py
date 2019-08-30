@@ -33,7 +33,7 @@ CLIENT = {
         "response_type": "code",
         "scope": ["openid", "profile", "email"]
     },
-    "registration_reponse": {
+    "registration_response": {
         "redirect_uris": ["https://opendata.ozwillo-preprod.eu/"]
     },
     "allow": {

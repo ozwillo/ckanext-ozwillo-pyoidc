@@ -1,14 +1,14 @@
 import logging
+from flask import Blueprint, Response
 
-import ckan.plugins as plugins
-
-from ckan.plugins.toolkit import url_for, redirect_to, request, response, config, add_template_directory, add_public_directory, add_resource, get_action, c
-
-from ckan.common import session
-from ckan import model
-from ckan.logic.action.create import user_create, member_create
 import ckan.lib.base as base
+import ckan.lib.helpers as h
+import ckan.plugins as plugins
+from ckan import model
+from ckan.common import session, g
 from ckan.lib.helpers import flash_error
+from ckan.logic.action.create import user_create, member_create
+from ckan.plugins.toolkit import url_for, redirect_to, request, config, add_template_directory, add_public_directory, add_resource, get_action, c
 
 import conf
 from oidc import create_client, OIDCError
@@ -18,6 +18,51 @@ plugin_config_prefix = 'ckanext.ozwillo_pyoidc.'
 log = logging.getLogger(__name__)
 plugin_controller = __name__ + ':OpenidController'
 
+def ozwillo_login():
+    for item in plugins.PluginImplementations(plugins.IAuthenticator):
+        item.login()
+
+    log.info('Handling login of user %s' % session.get('user'))
+    response = Response()
+    for cookie in request.cookies:
+        value = request.cookies.get(cookie)
+        response.set_cookie(cookie, value, secure=True, httponly=True)
+    if 'organization_id' in session:
+        g_ = model.Group.get(session['organization_id'])
+        client = Clients.get_client(g_)
+        url, ht_args, state = client.create_authn_request(conf.ACR_VALUES)
+        session['state'] = state
+        session.save()
+        if ht_args:
+            request.headers.update(ht_args)
+        # Redirect URI should not include language info init.
+        # Returns: `invalid_request: Invalid parameter value: redirect_uri`
+        url = url.replace('en%2F','').replace('en/', '')
+        return redirect_to(url)
+    else:
+        return redirect_to('/')
+
+    extra_vars = {}
+    if g.user:
+        return base.render(u'user/logout_first.html', extra_vars)
+
+    came_from = request.params.get(u'came_from')
+    if not came_from:
+        came_from = h.url_for(u'user.logged_in')
+    g.login_handler = h.url_for(
+        _get_repoze_handler(u'login_handler_path'), came_from=came_from)
+    return base.render(u'user/login.html', extra_vars)
+
+
+def _get_repoze_handler(handler_name):
+    u'''Returns the URL that repoze.who will respond to and perform a
+    login or logout.'''
+    return getattr(request.environ[u'repoze.who.plugins'][u'friendlyform'],
+                   handler_name)
+
+
+blueprint = Blueprint('ozwillo-pyoidc', __name__)
+blueprint.add_url_rule(rule=u'/user/login', view_func=ozwillo_login)
 
 class Clients(object):
 
@@ -40,6 +85,7 @@ class Clients(object):
 class OzwilloPyoidcPlugin(plugins.SingletonPlugin):
     plugins.implements(plugins.IRoutes)
     plugins.implements(plugins.IAuthenticator, inherit=True)
+    plugins.implements(plugins.IBlueprint)
 
     def before_map(self, map):
         map.connect('/organization/{id:.*}/sso',
@@ -65,26 +111,13 @@ class OzwilloPyoidcPlugin(plugins.SingletonPlugin):
             c.user = userobj.name
             c.userobj = userobj
 
-    def login(self):
-        log.info('Handling login of user %s' % session['user'])
-        for cookie in request.cookies:
-            value = request.cookies.get(cookie)
-            response.set_cookie(cookie, value, secure=True, httponly=True)
-
-        if 'organization_id' in session:
-            g = model.Group.get(session['organization_id'])
-            client = Clients.get_client(g)
-            url, ht_args, state = client.create_authn_request(conf.ACR_VALUES)
-            session['state'] = state
-            session.save()
-            if ht_args:
-                request.headers.update(ht_args)
-            redirect_to(url)
-        else:
-            redirect_to('/')
+    # IBlueprint
+    def get_blueprint(self):
+        return blueprint
 
     def logout(self):
-        log.info('Logging out user: %s' % session['user'])
+        log.info('Logging out user: %s' % session.get('user'))
+        response = Response()
         session['user'] = None
         session.save()
         g = model.Group.get(session['organization_id'])
@@ -96,7 +129,6 @@ class OzwilloPyoidcPlugin(plugins.SingletonPlugin):
                               action='read',
                               id=g.name,
                               qualified=True)
-
             redirect_to(str(org_url))
         else:
             redirect_to('/')
