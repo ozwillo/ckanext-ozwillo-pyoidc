@@ -106,7 +106,7 @@ class OzwilloPyoidcPlugin(plugins.SingletonPlugin):
 
     def identify(self):
         user = session.get('user')
-        if user and not c.userobj:
+        if user and not getattr(c, 'userobj', None):
             userobj = model.User.get(user)
             c.user = userobj.name
             c.userobj = userobj
