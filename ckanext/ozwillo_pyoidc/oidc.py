@@ -136,6 +136,9 @@ def create_client(**kwargs):
 
     # The behaviour parameter is not significant for the election process
     _key_set.discard("behaviour")
+    # I do not understand how this was ever working without discarding this
+    # Below is not a case where _key_set includes "registration_response"
+    _key_set.discard("registration_response")
     for param in ["allow"]:
         try:
             setattr(client, param, kwargs[param])
