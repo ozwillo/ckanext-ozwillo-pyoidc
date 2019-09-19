@@ -152,6 +152,8 @@ class OpenidController(base.BaseController):
                               action='read',
                               id=g.name))
         try:
+            # Grab state from query parameter if session does not have it
+            session['state'] = session.get('state', request.params.get('state'))
             userinfo, app_admin, app_user, access_token, id_token \
                 = client.callback(session['state'], request.GET)
             session['access_token'] = access_token
