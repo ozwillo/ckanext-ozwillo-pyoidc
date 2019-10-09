@@ -175,7 +175,7 @@ def slo():
     """
     Revokes the delivered access token. Logs out the user
     """
-    if not request.referer or request.host not in request.referer:
+    if not request.referrer or request.host not in request.referrer:
         return redirect_to('/')
 
     g = model.Group.get(session['organization_id'])
