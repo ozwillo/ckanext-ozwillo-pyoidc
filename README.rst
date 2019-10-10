@@ -11,8 +11,8 @@ ckanext-ozwillo-pyoidc
 Requirements
 ------------
 
-For example, you might want to mention here which versions of CKAN this
-extension works with.
+The `pyoidc-ozwillo
+<https://github.com/ozwillo/pyoidc-ozwillo/>`_ library is required to use this extension.
 
 
 ------------
