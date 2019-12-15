@@ -203,6 +203,7 @@ def slo():
                             data=data, headers=headers)
 
         # Invalidate the local session (https://doc.ozwillo.com/#2-invalidate-the-applications-local-session)
+        id_token = session.get('id_token')
         session.invalidate()
         c.user = None
         c.userobj = None
@@ -211,7 +212,7 @@ def slo():
             response.delete_cookie(cookie)
 
         # redirect to IDP logout (https://doc.ozwillo.com/#3-single-sign-out)
-        logout_url += '?id_token_hint=%s&' % session.get('id_token')
+        logout_url += '?id_token_hint=%s&' % id_token
         logout_url += 'post_logout_redirect_uri=%s' % redirect_uri
 
         log.info('Redirecting user to: %s' % logout_url)
