@@ -41,8 +41,8 @@ def ozwillo_login():
         g_ = model.Group.get(session['organization_id'])
         client = Clients.get_client(g_)
         url, ht_args, state = client.create_authn_request(conf.ACR_VALUES)
-    	session['state'] = state
-    	session['from_login'] = True
+        session['state'] = state
+        session['from_login'] = True
         session.save()
         if ht_args:
             request.headers.update(ht_args)
@@ -103,7 +103,7 @@ def callback(id):
         # Grab state from query parameter if session does not have it
         session['state'] = session.get('state', request.params.get('state'))
         userinfo, app_admin, app_user, access_token, id_token \
-            = client.callback(session['state'], request.args )
+            = client.callback(session['state'], request.args)
         session['access_token'] = access_token
         session['id_token'] = id_token
         session.save()
@@ -178,6 +178,8 @@ def slo():
     if not request.referrer or request.host not in request.referrer:
         return redirect_to('/')
 
+    log.info('Preparing to logging out: %s' % c.user)
+
     g = model.Group.get(session['organization_id'])
     org_url = url_for(host=request.host,
                       controller='organization',
@@ -193,16 +195,27 @@ def slo():
 
         redirect_uri = org_url + '/logout'
 
-        # revoke the access token
+        # revoke the access token (https://doc.ozwillo.com/#1-revoke-known-tokens)
         headers = {'Content-Type': 'application/x-www-form-urlencoded'}
         data = 'token=' + session.get('access_token')
         data += '&token_type_hint=access_token'
         client.http_request(client.revocation_endpoint, 'POST',
                             data=data, headers=headers)
 
-        # redirect to IDP logout
+        # Invalidate the local session (https://doc.ozwillo.com/#2-invalidate-the-applications-local-session)
+        session.invalidate()
+        c.user = None
+        c.userobj = None
+        response = Response()
+        for cookie in request.cookies:
+            response.delete_cookie(cookie)
+
+        # redirect to IDP logout (https://doc.ozwillo.com/#3-single-sign-out)
         logout_url += '?id_token_hint=%s&' % session.get('id_token')
         logout_url += 'post_logout_redirect_uri=%s' % redirect_uri
+
+        log.info('Redirecting user to: %s' % logout_url)
+
         return redirect_to(str(logout_url))
     return redirect_to(org_url)
 

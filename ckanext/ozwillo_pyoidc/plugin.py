@@ -22,6 +22,10 @@ class OzwilloPyoidcPlugin(plugins.SingletonPlugin):
     plugins.implements(plugins.IBlueprint)
 
     def before_map(self, map):
+        # was used as a post_logout_redirect_uri ...
+        # but it no longer redirects here after the logout
+        # and the local logout is now done in blueprints.py
+        # TODO remove this if confirmed
         map.redirect('/organization/{id:.*}/logout', '/user/_logout')
 
         return map
