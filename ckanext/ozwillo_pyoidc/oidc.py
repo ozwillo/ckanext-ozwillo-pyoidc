@@ -10,7 +10,7 @@ import logging
 
 logger = logging.getLogger(__name__)
 
-import conf
+from . import conf
 
 class OIDCError(Exception):
     pass

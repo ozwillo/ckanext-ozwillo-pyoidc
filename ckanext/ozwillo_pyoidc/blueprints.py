@@ -9,8 +9,8 @@ from ckan.lib.helpers import flash_error
 from ckan.logic.action.create import user_create, member_create
 from ckan.plugins.toolkit import url_for, redirect_to, request, config, add_template_directory, add_public_directory, add_resource, get_action, c
 
-import conf
-from oidc import create_client, OIDCError
+from . import conf
+from .oidc import create_client, OIDCError
 
 log = logging.getLogger(__name__)
 ozwillo = Blueprint('ozwillo-pyoidc', __name__)
@@ -107,7 +107,7 @@ def callback(id):
         session['access_token'] = access_token
         session['id_token'] = id_token
         session.save()
-    except OIDCError, e:
+    except OIDCError as e:
         flash_error('Login failed')
         return redirect_to(org_url, qualified=True)
 
@@ -161,7 +161,7 @@ def callback(id):
             userobj.name = userinfo['nickname']
         try:
             userobj.save()
-        except Exception, e:
+        except Exception as e:
             log.warning('Error while saving user name: %s' % e)
 
         session['user'] = userobj.id

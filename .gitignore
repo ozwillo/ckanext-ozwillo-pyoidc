@@ -1,4 +1,4 @@
 
 dist/
-
+*.pyc
 ckanext_ozwillo_pyoidc\.egg-info/

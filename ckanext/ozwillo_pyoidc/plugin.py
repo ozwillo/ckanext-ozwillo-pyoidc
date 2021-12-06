@@ -6,9 +6,9 @@ from ckan import model
 from ckan.common import session, g
 from ckan.plugins.toolkit import url_for, redirect_to, request, c
 
-import conf
-from oidc import create_client, OIDCError
-from blueprints import ozwillo
+from . import conf
+from .oidc import create_client, OIDCError
+from .blueprints import ozwillo
 
 plugin_config_prefix = 'ckanext.ozwillo_pyoidc.'
 
