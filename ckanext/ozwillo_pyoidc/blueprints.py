@@ -7,7 +7,8 @@ from ckan import model
 from ckan.common import session, g
 from ckan.lib.helpers import flash_error
 from ckan.logic.action.create import user_create, member_create
-from ckan.plugins.toolkit import url_for, redirect_to, request, config, add_template_directory, add_public_directory, add_resource, get_action, c
+from ckan.plugins.toolkit import url_for, redirect_to, request, config, add_template_directory, add_public_directory, \
+    add_resource, get_action, c
 
 from . import conf
 from .oidc import create_client, OIDCError
@@ -21,14 +22,11 @@ class Clients(object):
     @classmethod
     def get_client(cls, g_):
         params = conf.CLIENT.copy()
-        params['srv_discovery_url'] = config.get(
-	    'ckanext.ozwillo_pyoidc.plugin.ozwillo_discovery_url')
+        params['srv_discovery_url'] = config.get('ckanext.ozwillo_pyoidc.plugin.ozwillo_discovery_url')
         params['client_registration'].update({
             'client_id': g_._extras['client_id'].value,
             'client_secret': g_._extras['client_secret'].value,
-            'redirect_uris': [url_for('ozwillo-pyoidc.callback',
-                                      id=g_.name,
-                                      _external=True)]
+            'redirect_uris': [url_for('ozwillo-pyoidc.callback', id=g_.name, _external=True)]
         })
         return create_client(**params)
 
@@ -38,6 +36,8 @@ def ozwillo_login():
         value = request.cookies.get(cookie)
         Response().set_cookie(cookie, value, secure=True, httponly=True)
     if 'organization_id' in session:
+        # If no organization_id in session, use a special "portal" id
+        # But it has to be created first as a group in CKAN...
         g_ = model.Group.get(session['organization_id'])
         client = Clients.get_client(g_)
         url, ht_args, state = client.create_authn_request(conf.ACR_VALUES)
@@ -48,40 +48,29 @@ def ozwillo_login():
             request.headers.update(ht_args)
         # Redirect URI should not include language info init.
         # Returns: `invalid_request: Invalid parameter value: redirect_uri`
-        url = url.replace('en%2F','').replace('en/', '')
+        url = url.replace('en%2F', '').replace('en/', '').replace('fr%2F', '').replace('fr/', '')
         return redirect_to(url)
     else:
         return redirect_to('/')
-
-    extra_vars = {}
-    if g.user:
-        return base.render(u'user/logout_first.html', extra_vars)
-
-    came_from = request.params.get(u'came_from')
-    if not came_from:
-        came_from = h.url_for(u'user.logged_in')
-    g.login_handler = h.url_for(
-        _get_repoze_handler(u'login_handler_path'), came_from=came_from)
-    return base.render(u'user/login.html', extra_vars)
 
 
 def _get_repoze_handler(handler_name):
     u'''Returns the URL that repoze.who will respond to and perform a
     login or logout.'''
-    return getattr(request.environ[u'repoze.who.plugins'][u'friendlyform'],
-                   handler_name)
+    return getattr(request.environ[u'repoze.who.plugins'][u'friendlyform'], handler_name)
 
 
 ozwillo.add_url_rule(rule=u'/user/login', view_func=ozwillo_login)
 
 
+# Entry point called when coming from the portal
 def sso(id):
     log.info('SSO for organization "%s"' % id)
     session['organization_id'] = id
     session.save()
     log.info('redirecting to login page')
-    login_url = url_for('ozwillo-pyoidc.ozwillo_login')
     return ozwillo_login()
+
 
 ozwillo.add_url_rule(rule=u'/organization/<id>/sso', view_func=sso)
 
@@ -90,20 +79,18 @@ def callback(id):
     # Blueprints act strangely after user is logged in once. It will skip
     # SSO and user/login when trying to log in from different account and
     # directly get here. This is a workaround to force login user if not
-    # redirected from loging page (as it sets important values in session)
+    # redirected from login page (as it sets important values in session)
     if not session.get('from_login'):
         return sso(id)
     session['from_login'] = False
     g_ = model.Group.get(session.get('organization_id', id))
     client = Clients.get_client(g_)
-    org_url = str(url_for(controller="organization",
-                          action='read',
-                          id=g_.name))
+    # In case we are not coming from an organization, use the landing page URL
+    org_url = str(url_for(controller="organization", action='read', id=g_.name))
     try:
         # Grab state from query parameter if session does not have it
         session['state'] = session.get('state', request.params.get('state'))
-        userinfo, app_admin, app_user, access_token, id_token \
-            = client.callback(session['state'], request.args)
+        userinfo, app_admin, app_user, access_token, id_token = client.callback(session['state'], request.args)
         session['access_token'] = access_token
         session['id_token'] = id_token
         session.save()
@@ -169,7 +156,9 @@ def callback(id):
 
     return redirect_to(org_url)
 
+
 ozwillo.add_url_rule(rule=u'/organization/<id>/callback', view_func=callback)
+
 
 def slo():
     """

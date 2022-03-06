@@ -82,8 +82,7 @@ class Client(oic.Client):
                 args = {
                     "grant_type": "authorization_code",
                     "code": authresp["code"],
-                    "redirect_uri": self.registration_response[
-                        "redirect_uris"][0],
+                    "redirect_uri": self.registration_response["redirect_uris"][0],
                     "client_id": self.client_id,
                     "client_secret": self.client_secret
                 }
@@ -93,7 +92,7 @@ class Client(oic.Client):
                     authn_method=self.registration_response["token_endpoint_auth_method"])
                 id_token = atresp.get('id_token', {})
                 app_admin = 'app_admin' in id_token and id_token['app_admin']
-                app_user = 'app_user' in id_token  and id_token['app_user']
+                app_user = 'app_user' in id_token and id_token['app_user']
             except Exception as err:
                 logger.error("%s" % err)
                 raise
@@ -112,6 +111,7 @@ class Client(oic.Client):
         logger.debug("UserInfo: %s" % inforesp)
 
         return userinfo, app_admin, app_user, self.access_token, self.id_token
+
 
 def create_client(**kwargs):
     """
