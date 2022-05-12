@@ -86,6 +86,15 @@ def sso(id):
 ozwillo.add_url_rule(rule=u'/organization/<id>/sso', view_func=sso)
 
 
+def login_to_org(id):
+    log.info('Login to organization "%s"' % id)
+    session['is_login_to_org'] = True
+    session.save()
+    return sso(id)
+
+ozwillo.add_url_rule(rule=u'/organization/<id>/login_to_org', view_func=login_to_org)
+
+
 def callback(id):
     # Blueprints act strangely after user is logged in once. It will skip
     # SSO and user/login when trying to log in from different account and
@@ -108,7 +117,8 @@ def callback(id):
         session['id_token'] = id_token
         session.save()
     except OIDCError as e:
-        flash_error('Login failed')
+        is_login_to_org = 'is_login_to_org' in session and session['is_login_to_org']
+        flash_error("Login failed" if not is_login_to_org else "Vous n'êtes pas membre de cette organisation")
         return redirect_to(org_url, qualified=True)
 
     locale = None
