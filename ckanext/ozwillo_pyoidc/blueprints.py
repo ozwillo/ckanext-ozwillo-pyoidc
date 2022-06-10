@@ -20,6 +20,11 @@ class Clients(object):
 
     @classmethod
     def get_client(cls, g_):
+        '''
+        Returns an Ozwillo OpenID Connect client.
+        Raises KeyError if the provided organization is missing client_id or
+        client_secret or non existing organization
+        '''
         params = conf.CLIENT.copy()
         params['srv_discovery_url'] = config.get(
 	    'ckanext.ozwillo_pyoidc.plugin.ozwillo_discovery_url')
@@ -34,11 +39,25 @@ class Clients(object):
 
 
 def ozwillo_login():
+    '''
+    Called by sso(). Sets response cookies, loads the organization logged into
+    from session-provided id (and if it doesn't exist, instead of failing right
+    away uses the first of ozwillo_global_login_organization_names as default,
+    so ex. /dummy_org/sso can be used as a global login url in the theme),
+    creates OID client from client_id/secret of session-provided organization,
+    saves its state and redirects to its callback
+    '''
     for cookie in request.cookies:
         value = request.cookies.get(cookie)
         Response().set_cookie(cookie, value, secure=True, httponly=True)
+
     if 'organization_id' in session:
         g_ = model.Group.get(session['organization_id'])
+        if not g_ and not ('is_login_to_org' in session and session['is_login_to_org']):
+            # if unknown organization, uses the first conf'd one as default :
+            g_ = model.Group.get(get_global_login_organization_names()[0])
+
+        log.info('ozwillo_login org', g_)
         client = Clients.get_client(g_)
         url, ht_args, state = client.create_authn_request(conf.ACR_VALUES)
         session['state'] = state
@@ -75,18 +94,76 @@ def _get_repoze_handler(handler_name):
 ozwillo.add_url_rule(rule=u'/user/login', view_func=ozwillo_login)
 
 
+def get_global_login_organization_names():
+    '''
+    Returns the names / ids of the organizations to be successively tried when
+    doing a global (not org) login, as configured in
+    ozwillo_global_login_organization_names
+    '''
+    s = config.get('ckanext.ozwillo_pyoidc.plugin.ozwillo_global_login_organization_names')
+    if s:
+        org_names = s.split()
+        if len(org_names) != 0:
+            return org_names
+
+    return None
+
+def try_sso_next_login_org(id):
+    '''
+    Tries to sso to the organizationa whose id is after the provided one in
+    their ozwillo_global_login_organization_names order if configured, and if it
+    fails recursively tries to the one after that and so on.
+    '''
+    log.info('try_sso_next_login_org', id)
+    login_org_ids = get_global_login_organization_names()
+    if login_org_ids and len(login_org_ids) != 0 :
+        # let's try to log in the next org used for login :
+        # (so to be able to login, a user has only to be member of any of those
+        # rather than of a specific one)
+        login_org_index = login_org_ids.index(id) if id in login_org_ids else 0
+        if login_org_index + 1 < len(login_org_ids):
+            next_id = login_org_ids[login_org_index + 1]
+            try:
+                return sso(next_id)
+            except (KeyError, OIDCError, AttributeError) as e:
+                return try_sso_next_login_org(next_id)
+    return None
+
 def sso(id):
+    '''
+    Logs in to the organization with the given id, and if it fails (KeyError
+    because of missing client_id in organization extra fields, as a patch to the
+    case when it has been erased by mistake such as using the default custom
+    form fields) to the next one in the ozwillo_global_login_organization_names
+    property if configured
+    '''
     log.info('SSO for organization "%s"' % id)
     session['organization_id'] = id
     session.save()
     log.info('redirecting to login page')
     login_url = url_for('ozwillo-pyoidc.ozwillo_login')
-    return ozwillo_login()
+    try:
+        return ozwillo_login()
+    except KeyError as e:
+        log.info('sso KeyError, probably missing client_id ? :', e.args[0], e)
+        sso_ok = try_sso_next_login_org(id)
+        if sso_ok:
+            return sso_ok
 
 ozwillo.add_url_rule(rule=u'/organization/<id>/sso', view_func=sso)
 
 
 def login_to_org(id):
+    '''
+    Used by the "Log in th Organization" button on the organization page, in
+    order to add the membership of the user to this organization if it has been
+    defined in the portal but the icon in the portal not yet clicked on.
+    So does a login to the organization with the provided id, with the same
+    process as /sso, with the differences that, if it fails :
+    - it does not try to log in to any other organization whose id is listed in
+    the ozwillo_global_login_organization_names configuration property
+    - will display (in callback()) "not a member" rather than "Login failed".
+    '''
     log.info('Login to organization "%s"' % id)
     session['is_login_to_org'] = True
     session.save()
@@ -96,12 +173,22 @@ ozwillo.add_url_rule(rule=u'/organization/<id>/login_to_org', view_func=login_to
 
 
 def callback(id):
-    # Blueprints act strangely after user is logged in once. It will skip
+    '''
+    OID callback.
+    If it fails (OIDCError), if the session has NOT been marked as been in the
+    context of a login_to_org() call (rather than only an sso() one), tries to
+    sso() to the organization with the next id in the order of the
+    ozwillo_global_login_organization_names property if configured (by calling
+    try_sso_next_login_org()) ; else displays a specific message ("not member
+    of this org", rather than "Login Failed")
+    '''
+    # Blueprint act strangely after user is logged in once. It will skip
     # SSO and user/login when trying to log in from different account and
     # directly get here. This is a workaround to force login user if not
     # redirected from loging page (as it sets important values in session)
     if not session.get('from_login'):
         return sso(id)
+    from_login = session['from_login']
     session['from_login'] = False
     g_ = model.Group.get(session.get('organization_id', id))
     client = Clients.get_client(g_)
@@ -118,6 +205,17 @@ def callback(id):
         session.save()
     except OIDCError as e:
         is_login_to_org = 'is_login_to_org' in session and session['is_login_to_org']
+        log.info('OIDCError is_login_to_org', is_login_to_org, e, session)
+         # reinit for next time :
+        session['is_login_to_org'] = False
+        session.save()
+        log.info('OIDCError is_login_to_org', is_login_to_org, e, session)
+
+        if not is_login_to_org:
+            sso_ok = try_sso_next_login_org(id)
+            if sso_ok:
+                return sso_ok
+
         flash_error("Login failed" if not is_login_to_org else "Vous n'êtes pas membre de cette organisation")
         return redirect_to(org_url, qualified=True)
 
