@@ -52,12 +52,12 @@ def ozwillo_login():
         Response().set_cookie(cookie, value, secure=True, httponly=True)
 
     if 'organization_id' in session:
+        log.info('ozwillo_login org=%s', session['organization_id'])
         g_ = model.Group.get(session['organization_id'])
-        if not g_ and not ('is_login_to_org' in session and session['is_login_to_org']):
-            # if unknown organization, uses the first conf'd one as default :
-            g_ = model.Group.get(get_global_login_organization_names()[0])
+        # NB. if unknown organization (g_ is None), next line raises AttributeError,
+        # which is caught above if not is_login_to_org, and otherwise should not
+        # happen because login to org button is only available on existing orgs.
 
-        log.info('ozwillo_login org', g_)
         client = Clients.get_client(g_)
         url, ht_args, state = client.create_authn_request(conf.ACR_VALUES)
         session['state'] = state
@@ -114,7 +114,7 @@ def try_sso_next_login_org(id):
     their ozwillo_global_login_organization_names order if configured, and if it
     fails recursively tries to the one after that and so on.
     '''
-    log.info('try_sso_next_login_org', id)
+    log.info('try_sso_next_login_org id=%s', id)
     login_org_ids = get_global_login_organization_names()
     if login_org_ids and len(login_org_ids) != 0 :
         # let's try to log in the next org used for login :
@@ -145,7 +145,7 @@ def sso(id):
     try:
         return ozwillo_login()
     except KeyError as e:
-        log.info('sso KeyError, probably missing client_id ? :', e.args[0], e)
+        log.info('sso KeyError, probably missing client_id ? error : %s %s', e.args[0], e)
         sso_ok = try_sso_next_login_org(id)
         if sso_ok:
             return sso_ok
@@ -155,7 +155,7 @@ ozwillo.add_url_rule(rule=u'/organization/<id>/sso', view_func=sso)
 
 def login_to_org(id):
     '''
-    Used by the "Log in th Organization" button on the organization page, in
+    Used by the "Log in to Organization" button on the organization page, in
     order to add the membership of the user to this organization if it has been
     defined in the portal but the icon in the portal not yet clicked on.
     So does a login to the organization with the provided id, with the same
@@ -165,6 +165,8 @@ def login_to_org(id):
     - will display (in callback()) "not a member" rather than "Login failed".
     '''
     log.info('Login to organization "%s"' % id)
+    # let's mark the next processing as being a log in to organization
+    # rather than a login using the global login button :
     session['is_login_to_org'] = True
     session.save()
     return sso(id)
@@ -182,42 +184,60 @@ def callback(id):
     try_sso_next_login_org()) ; else displays a specific message ("not member
     of this org", rather than "Login Failed")
     '''
+
     # Blueprint act strangely after user is logged in once. It will skip
     # SSO and user/login when trying to log in from different account and
     # directly get here. This is a workaround to force login user if not
     # redirected from loging page (as it sets important values in session)
     if not session.get('from_login'):
         return sso(id)
+
     from_login = session['from_login']
     session['from_login'] = False
-    g_ = model.Group.get(session.get('organization_id', id))
-    client = Clients.get_client(g_)
+    org_id = session.get('organization_id', id)
     org_url = str(url_for(controller="organization",
                           action='read',
-                          id=g_.name))
-    try:
-        # Grab state from query parameter if session does not have it
-        session['state'] = session.get('state', request.params.get('state'))
-        userinfo, app_admin, app_user, access_token, id_token \
-            = client.callback(session['state'], request.args)
-        session['access_token'] = access_token
-        session['id_token'] = id_token
-        session.save()
-    except OIDCError as e:
+                          id=org_id))
+
+    g_ = model.Group.get(org_id)
+    client = None
+    error = None
+    if g_:
+        client = Clients.get_client(g_)
+        try:
+            # Grab state from query parameter if session does not have it
+            session['state'] = session.get('state', request.params.get('state'))
+            userinfo, app_admin, app_user, access_token, id_token \
+                = client.callback(session['state'], request.args)
+            session['access_token'] = access_token
+            session['id_token'] = id_token
+            session.save()
+        except OIDCError as e:
+            error = OIDCError
+
+    if not g_ or error:
         is_login_to_org = 'is_login_to_org' in session and session['is_login_to_org']
-        log.info('OIDCError is_login_to_org', is_login_to_org, e, session)
+        log.info('callback - unknown organization or OIDCError: g_=%s, OIDCError=%s, is_login_to_org=%s, session=%s', g_, error, is_login_to_org, session)
          # reinit for next time :
         session['is_login_to_org'] = False
         session.save()
-        log.info('OIDCError is_login_to_org', is_login_to_org, e, session)
 
         if not is_login_to_org:
             sso_ok = try_sso_next_login_org(id)
             if sso_ok:
                 return sso_ok
 
+        # displaying error messages on IHM :
+
+        if not g_:
+            flash_error("Login failed" if not is_login_to_org else "Organisation inexistante")
+
+        # there has been an OIDCError :
         flash_error("Login failed" if not is_login_to_org else "Vous n'êtes pas membre de cette organisation")
-        return redirect_to(org_url, qualified=True)
+
+        return redirect_to(org_url if is_login_to_org else str(url_for(controller="organization",
+                                                                          action='read',
+                                                                          id=get_global_login_organization_names()[0])), qualified=True)
 
     locale = None
     log.info('Received userinfo: %s' % userinfo)
