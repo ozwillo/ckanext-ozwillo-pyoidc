@@ -229,11 +229,12 @@ def callback(id):
 
         # displaying error messages on IHM :
 
+        login_failed_message = "Connexion échouée. Vous n'êtes pas membre d'une des organisations permettant l'usage du bouton de connexion global (" + ", ".join(get_global_login_organization_names()) + "). Demandez à la personne qui vous a invitée, ou utilisez le bouton de connexion à l'organisation présent sur une organisation dont vous êtes membre."
         if not g_:
-            flash_error("Login failed" if not is_login_to_org else "Organisation inexistante")
+            flash_error(login_failed_message if not is_login_to_org else "Organisation inexistante")
 
         # there has been an OIDCError :
-        flash_error("Login failed" if not is_login_to_org else "Vous n'êtes pas membre de cette organisation")
+        flash_error(login_failed_message if not is_login_to_org else "Vous n'êtes pas membre de cette organisation")
 
         return redirect_to(org_url if is_login_to_org else str(url_for(controller="organization",
                                                                           action='read',
